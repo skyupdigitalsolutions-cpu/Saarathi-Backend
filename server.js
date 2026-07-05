@@ -14,7 +14,14 @@ import { scheduleDailyReport } from "./lib/report.js";
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || "*" }));
+// CORS: reflect the request origin so the Cloudflare Pages dashboard (and the
+// public landing form, which live on other origins) are never blocked.
+// This app has no cookie/session auth, so CORS is not a security boundary here
+// anyway — a browser-side allow-all just prevents the "blocked by CORS policy"
+// failure. (Add real auth before treating the API as private.)
+app.use(cors({ origin: true }));
+app.options("*", cors({ origin: true }));
+
 app.use(express.json({ limit: "5mb" }));
 
 app.get("/api/health", (req, res) =>
@@ -40,6 +47,6 @@ app.use("/api/whatsapp", whatsappRouter);
 const PORT = process.env.PORT || 5000;
 
 connectDB(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/saarathi_crm").then(() => {
-  app.listen(PORT, () => console.log(`✓ Saarathi CRM API on http://localhost:${PORT}`));
+  app.listen(PORT, () => console.log(`\u2713 Saarathi CRM API on port ${PORT}`));
   scheduleDailyReport();
 });
