@@ -10,7 +10,9 @@ import copilotRouter from "./routes/copilot.js";
 import messagingRouter from "./routes/messaging.js";
 import reportRouter from "./routes/report.js";
 import whatsappRouter from "./routes/whatsapp.js";
+import subscriptionRouter from "./routes/subscription.js";
 import { scheduleDailyReport } from "./lib/report.js";
+import { subscriptionGate, scheduleExpiryAlerts } from "./lib/subscription.js";
 
 const app = express();
 
@@ -36,17 +38,25 @@ app.get("/api/health", (req, res) =>
   })
 );
 
-app.use("/api/leads", leadsRouter);
+// Subscription status + developer panel API — never gated (needed to read
+// status and to renew). Lead intake webhook is also left open so leads are
+// never lost during a lapse.
+app.use("/api/subscription", subscriptionRouter);
 app.use("/api/intake", intakeRouter);
-app.use("/api/dashboard", dashboardRouter);
-app.use("/api/copilot", copilotRouter);
-app.use("/api/messaging", messagingRouter);
-app.use("/api/report", reportRouter);
-app.use("/api/whatsapp", whatsappRouter);
+
+// Everything below is locked (HTTP 423) when the subscription is expired/disabled.
+const gate = subscriptionGate();
+app.use("/api/leads", gate, leadsRouter);
+app.use("/api/dashboard", gate, dashboardRouter);
+app.use("/api/copilot", gate, copilotRouter);
+app.use("/api/messaging", gate, messagingRouter);
+app.use("/api/report", gate, reportRouter);
+app.use("/api/whatsapp", gate, whatsappRouter);
 
 const PORT = process.env.PORT || 5000;
 
 connectDB(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/saarathi_crm").then(() => {
   app.listen(PORT, () => console.log(`\u2713 Saarathi CRM API on port ${PORT}`));
   scheduleDailyReport();
+  scheduleExpiryAlerts();
 });
