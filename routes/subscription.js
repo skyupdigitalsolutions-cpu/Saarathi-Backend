@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getSubscription, computeStatus } from "../models/Subscription.js";
-import { requireDevKey, checkExpiryAndAlert } from "../lib/subscription.js";
+import { checkExpiryAndAlert } from "../lib/subscription.js";
+import { requireDeveloper } from "../lib/auth.js";
 
 const router = Router();
 
@@ -15,13 +16,13 @@ router.get("/status", async (req, res) => {
 });
 
 /** DEV — full detail (same as status; kept for the panel). */
-router.get("/", requireDevKey, async (req, res) => {
+router.get("/", requireDeveloper, async (req, res) => {
   const sub = await getSubscription();
   res.json(computeStatus(sub));
 });
 
 /** DEV — set start/end dates, plan, enabled flag. */
-router.post("/", requireDevKey, async (req, res) => {
+router.post("/", requireDeveloper, async (req, res) => {
   try {
     const sub = await getSubscription();
     const { startDate, endDate, enabled, plan } = req.body || {};
@@ -41,7 +42,7 @@ router.post("/", requireDevKey, async (req, res) => {
 });
 
 /** DEV — renew: start today, end in N days (default 30), re-enable. */
-router.post("/renew", requireDevKey, async (req, res) => {
+router.post("/renew", requireDeveloper, async (req, res) => {
   try {
     const days = Number(req.body?.days) > 0 ? Number(req.body.days) : 30;
     const sub = await getSubscription();
@@ -59,7 +60,7 @@ router.post("/renew", requireDevKey, async (req, res) => {
 });
 
 /** DEV — master enable/disable toggle. */
-router.post("/toggle", requireDevKey, async (req, res) => {
+router.post("/toggle", requireDeveloper, async (req, res) => {
   try {
     const sub = await getSubscription();
     sub.enabled = typeof req.body?.enabled === "boolean" ? req.body.enabled : !sub.enabled;
