@@ -11,8 +11,10 @@ import messagingRouter from "./routes/messaging.js";
 import reportRouter from "./routes/report.js";
 import whatsappRouter from "./routes/whatsapp.js";
 import subscriptionRouter from "./routes/subscription.js";
+import authRouter from "./routes/auth.js";
 import { scheduleDailyReport } from "./lib/report.js";
 import { subscriptionGate, scheduleExpiryAlerts } from "./lib/subscription.js";
+import { requireAuth, seedAdmin } from "./lib/auth.js";
 
 const app = express();
 
@@ -38,24 +40,26 @@ app.get("/api/health", (req, res) =>
   })
 );
 
-// Subscription status + developer panel API — never gated (needed to read
-// status and to renew). Lead intake webhook is also left open so leads are
-// never lost during a lapse.
+// Auth + subscription status + developer panel API — never gated by login.
+// Lead intake webhook is also left open so leads are never lost during a lapse.
+app.use("/api/auth", authRouter);
 app.use("/api/subscription", subscriptionRouter);
 app.use("/api/intake", intakeRouter);
 
-// Everything below is locked (HTTP 423) when the subscription is expired/disabled.
+// Everything below requires a logged-in user AND an active subscription.
+// requireAuth runs first (401 if not logged in), then the gate (423 if expired/disabled).
 const gate = subscriptionGate();
-app.use("/api/leads", gate, leadsRouter);
-app.use("/api/dashboard", gate, dashboardRouter);
-app.use("/api/copilot", gate, copilotRouter);
-app.use("/api/messaging", gate, messagingRouter);
-app.use("/api/report", gate, reportRouter);
-app.use("/api/whatsapp", gate, whatsappRouter);
+app.use("/api/leads", requireAuth, gate, leadsRouter);
+app.use("/api/dashboard", requireAuth, gate, dashboardRouter);
+app.use("/api/copilot", requireAuth, gate, copilotRouter);
+app.use("/api/messaging", requireAuth, gate, messagingRouter);
+app.use("/api/report", requireAuth, gate, reportRouter);
+app.use("/api/whatsapp", requireAuth, gate, whatsappRouter);
 
 const PORT = process.env.PORT || 5000;
 
-connectDB(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/saarathi_crm").then(() => {
+connectDB(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/saarathi_crm").then(async () => {
+  await seedAdmin();
   app.listen(PORT, () => console.log(`\u2713 Saarathi CRM API on port ${PORT}`));
   scheduleDailyReport();
   scheduleExpiryAlerts();
