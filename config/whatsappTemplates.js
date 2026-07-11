@@ -15,7 +15,7 @@ export const WHATSAPP_TEMPLATES = [
     language: "en",
     params: ["name"],
     preview:
-      "Hi {{1}}, this is Saarathi Associates. We help you secure the right loan — personal, home, business, car, gold, and loan against property — with quick processing and expert guidance. To get started, please fill this short form and our team will reach out to you: https://YOUR-FORM-LINK",
+      "Hi {{1}}, this is Saarathi Associates. We help you secure the right loan — personal, home, business, car, gold, and loan against property — with quick processing and expert guidance. To get started, please fill this short form and our team will reach out to you: https://sarathi-associates.netlify.app/",
   },
   {
     // 2) AUTO ACKNOWLEDGEMENT — sent automatically the moment someone submits the form.
