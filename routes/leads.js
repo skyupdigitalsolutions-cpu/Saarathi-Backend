@@ -2,6 +2,7 @@ import express from "express";
 import Lead from "../models/Lead.js";
 import { classifyLead } from "../lib/classifier.js";
 import { ruleScore } from "../lib/ruleScore.js";
+import { autoWelcomeLead } from "../lib/autoWhatsApp.js";
 import {
   normalizePhone,
   amountBand,
@@ -64,7 +65,9 @@ export async function createAndClassify(body, source) {
   } catch (err) {
     console.error("Classification failed:", err.message);
   }
-  return { duplicate: false, lead };
+  // auto-send the configured WhatsApp template (best-effort, source-based)
+  const whatsapp = await autoWelcomeLead(lead);
+  return { duplicate: false, lead, whatsapp };
 }
 
 // GET /api/leads  — list with filters (for the table)

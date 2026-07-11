@@ -152,52 +152,16 @@ router.post("/apply", publicCors, async (req, res) => {
       return res.status(400).json({ ok: false, error: "Name is required." });
     }
 
-    const { duplicate, lead } = await createAndClassify(req.body, "website");
-
-    // Fire-and-log the acknowledgement. Never throw out of here — the lead is already saved.
-    const whatsapp = { attempted: false, sent: false };
-    try {
-      const tpl = WHATSAPP_TEMPLATES.find((t) => t.name === ACK_TEMPLATE);
-      if (whatsappEnabled() && whatsappConfigured() && tpl && lead.phone) {
-        whatsapp.attempted = true;
-        const paramMap = {
-          name: lead.name || "there",
-          loan: LOAN_LABELS[lead.loanType] || "loan",
-          city: lead.city || "",
-          amount: lead.amount != null ? String(lead.amount) : "",
-        };
-        const params = (tpl.params || []).map((k) => paramMap[k] ?? "");
-        const body = fillPreview(tpl.preview, params);
-        const result = await sendWhatsAppTemplate(lead.phone, tpl.name, params, tpl.language);
-        await Message.create({
-          leadId: lead._id,
-          phone: lead.phone,
-          direction: "out",
-          channel: "whatsapp",
-          type: "template",
-          body,
-          templateName: tpl.name,
-          status: result.ok ? "sent" : "failed",
-          error: result.ok ? "" : result.error,
-          waMessageId: result.waMessageId || "",
-        });
-        whatsapp.sent = result.ok;
-        if (!result.ok) whatsapp.error = result.error;
-        if (result.ok) {
-          await Lead.findByIdAndUpdate(lead._id, {
-            $push: { notes: { text: `[WhatsApp] ${body.slice(0, 120)}`, author: "WhatsApp" } },
-          });
-        }
-      }
-    } catch (waErr) {
-      whatsapp.error = waErr.message;
-    }
+    // createAndClassify auto-sends the source-based WhatsApp template
+    // (website -> application_ack) and returns the result. The lead is always
+    // saved even if WhatsApp is off/unconfigured/fails.
+    const { duplicate, lead, whatsapp } = await createAndClassify(req.body, "website");
 
     return res.status(duplicate ? 200 : 201).json({
       ok: true,
       duplicate,
       leadId: String(lead._id),
-      whatsapp,
+      whatsapp: whatsapp || { attempted: false, sent: false },
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });

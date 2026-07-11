@@ -9,6 +9,7 @@ import {
   whatsappConfigured,
 } from "../lib/whatsapp.js";
 import { WHATSAPP_TEMPLATES } from "../config/whatsappTemplates.js";
+import { getSettings } from "../models/Settings.js";
 
 const router = express.Router();
 const WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -28,6 +29,34 @@ router.get("/templates", (req, res) => {
       name, label, language, params, preview,
     })),
   });
+});
+
+// ---- auto-send automation config (which template fires per lead source) ----
+router.get("/automation", async (req, res) => {
+  try {
+    const s = await getSettings();
+    res.json({ enabled: s.whatsappAutoEnabled, templates: s.autoTemplates });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/automation", async (req, res) => {
+  try {
+    const s = await getSettings();
+    const { enabled, templates } = req.body || {};
+    if (typeof enabled === "boolean") s.whatsappAutoEnabled = enabled;
+    if (templates && typeof templates === "object") {
+      for (const src of ["website", "meta", "manual"]) {
+        if (src in templates) s.autoTemplates[src] = String(templates[src] || "");
+      }
+      s.markModified("autoTemplates");
+    }
+    await s.save();
+    res.json({ enabled: s.whatsappAutoEnabled, templates: s.autoTemplates });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ---- conversations list (leads with any message, latest first) ----
