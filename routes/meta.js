@@ -14,6 +14,7 @@
 // your App Secret.
 
 import express from "express";
+import Lead from "../models/Lead.js";
 import { createAndClassify } from "./leads.js";
 import {
   fetchLeadById,
@@ -122,5 +123,69 @@ router.get("/status", (req, res) => {
     graphVersion: process.env.META_GRAPH_VERSION || "v21.0",
   });
 });
+
+// GET /api/meta/campaigns  — per-campaign breakdown of meta-sourced leads.
+// Powers the Campaigns page: connection status + a row per campaign with
+// counts, tier split, and last-lead time. Requires auth+subscription (mounted
+// as a guarded sub-route in server.js, see below).
+export async function campaignsHandler(req, res) {
+  try {
+    const rows = await Lead.aggregate([
+      { $match: { source: "meta" } },
+      {
+        $group: {
+          _id: { $ifNull: ["$campaign", ""] },
+          total: { $sum: 1 },
+          hot: { $sum: { $cond: [{ $eq: ["$tier", "hot"] }, 1, 0] } },
+          warm: { $sum: { $cond: [{ $eq: ["$tier", "warm"] }, 1, 0] } },
+          cold: { $sum: { $cond: [{ $eq: ["$tier", "cold"] }, 1, 0] } },
+          converted: {
+            $sum: {
+              $cond: [
+                { $in: ["$status", ["sanctioned", "disbursed"]] },
+                1,
+                0,
+              ],
+            },
+          },
+          lastLeadAt: { $max: "$createdAt" },
+        },
+      },
+      { $sort: { lastLeadAt: -1 } },
+    ]);
+
+    const campaigns = rows.map((r) => ({
+      campaign: r._id || "(no campaign name)",
+      total: r.total,
+      hot: r.hot,
+      warm: r.warm,
+      cold: r.cold,
+      converted: r.converted,
+      lastLeadAt: r.lastLeadAt,
+    }));
+
+    const totalMetaLeads = campaigns.reduce((s, c) => s + c.total, 0);
+
+    res.json({
+      connection: {
+        verifyTokenSet: Boolean(process.env.META_VERIFY_TOKEN),
+        appSecretSet: Boolean(process.env.META_APP_SECRET),
+        pageTokenSet: Boolean(process.env.META_PAGE_ACCESS_TOKEN),
+        graphVersion: process.env.META_GRAPH_VERSION || "v21.0",
+        webhookUrl: "/api/meta/webhook",
+        // "live" only when we can actually fetch real campaign leads.
+        live: Boolean(
+          process.env.META_VERIFY_TOKEN &&
+            process.env.META_APP_SECRET &&
+            process.env.META_PAGE_ACCESS_TOKEN
+        ),
+      },
+      totalMetaLeads,
+      campaigns,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
 
 export default router;
