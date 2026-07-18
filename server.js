@@ -12,6 +12,7 @@ import reportRouter from "./routes/report.js";
 import whatsappRouter from "./routes/whatsapp.js";
 import subscriptionRouter from "./routes/subscription.js";
 import authRouter from "./routes/auth.js";
+import metaRouter from "./routes/meta.js";
 import { scheduleDailyReport } from "./lib/report.js";
 import { subscriptionGate, scheduleExpiryAlerts } from "./lib/subscription.js";
 import { requireAuth, seedAdmin } from "./lib/auth.js";
@@ -26,7 +27,15 @@ const app = express();
 app.use(cors({ origin: true }));
 app.options("*", cors({ origin: true }));
 
-app.use(express.json({ limit: "5mb" }));
+app.use(
+  express.json({
+    limit: "5mb",
+    // Keep the raw bytes so the Meta webhook can verify its signature.
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 
 app.get("/api/health", (req, res) =>
   res.json({
@@ -45,6 +54,9 @@ app.get("/api/health", (req, res) =>
 app.use("/api/auth", authRouter);
 app.use("/api/subscription", subscriptionRouter);
 app.use("/api/intake", intakeRouter);
+// Meta Lead Ads webhook — left open (like intake) so campaign leads are never
+// lost during a login lapse or subscription gap. Secured by verify token + signature.
+app.use("/api/meta", metaRouter);
 
 // Everything below requires a logged-in user AND an active subscription.
 // requireAuth runs first (401 if not logged in), then the gate (423 if expired/disabled).
