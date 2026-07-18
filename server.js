@@ -12,7 +12,7 @@ import reportRouter from "./routes/report.js";
 import whatsappRouter from "./routes/whatsapp.js";
 import subscriptionRouter from "./routes/subscription.js";
 import authRouter from "./routes/auth.js";
-import metaRouter from "./routes/meta.js";
+import metaRouter, { campaignsHandler } from "./routes/meta.js";
 import { scheduleDailyReport } from "./lib/report.js";
 import { subscriptionGate, scheduleExpiryAlerts } from "./lib/subscription.js";
 import { requireAuth, seedAdmin } from "./lib/auth.js";
@@ -62,6 +62,8 @@ app.use("/api/meta", metaRouter);
 // requireAuth runs first (401 if not logged in), then the gate (423 if expired/disabled).
 const gate = subscriptionGate();
 app.use("/api/leads", requireAuth, gate, leadsRouter);
+// Campaigns breakdown for the frontend Campaigns page — guarded like other data.
+app.get("/api/meta/campaigns", requireAuth, gate, campaignsHandler);
 app.use("/api/dashboard", requireAuth, gate, dashboardRouter);
 app.use("/api/copilot", requireAuth, gate, copilotRouter);
 app.use("/api/messaging", requireAuth, gate, messagingRouter);
