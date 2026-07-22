@@ -41,6 +41,8 @@ function buildLeadFields(body, source = "manual") {
     existingLoan: typeof body.existingLoan === "boolean" ? body.existingLoan : null,
     source,
     campaign: body.campaign || "",
+    // Raw Meta form answers stored verbatim — populated for source=meta leads.
+    metaFormAnswers: Array.isArray(body.metaFormAnswers) ? body.metaFormAnswers : [],
   };
 }
 
