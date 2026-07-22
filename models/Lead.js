@@ -85,6 +85,13 @@ const LeadSchema = new mongoose.Schema(
     followUpNote: { type: String, default: "" },
 
     rawPayload: { type: mongoose.Schema.Types.Mixed }, // original Meta/webhook body
+
+    // Raw form answers from Meta Lead Ads — stored as-is so any campaign
+    // question is captured automatically, regardless of field names.
+    metaFormAnswers: {
+      type: [{ question: String, answer: String }],
+      default: [],
+    },
   },
   { timestamps: true }
 );
