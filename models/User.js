@@ -8,6 +8,8 @@ const UserSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ["user", "developer"], default: "user" },
+    // terms acceptance
+    termsAccepted: { type: Boolean, default: false },
     // password reset
     resetTokenHash: { type: String, default: "" },
     resetTokenExpiry: { type: Date, default: null },
@@ -34,7 +36,7 @@ UserSchema.statics.hashToken = (raw) =>
 
 /** Safe object to return to the client (never the hash). */
 UserSchema.methods.toSafe = function () {
-  return { id: this._id, name: this.name, email: this.email, role: this.role };
+  return { id: this._id, name: this.name, email: this.email, role: this.role, termsAccepted: this.termsAccepted };
 };
 
 export const User = mongoose.model("User", UserSchema);
