@@ -120,4 +120,15 @@ router.delete("/users/:id", requireDeveloper, async (req, res) => {
   }
 });
 
+/** POST /api/auth/accept-terms — mark the logged-in user as having accepted T&C */
+router.post("/accept-terms", requireAuth, async (req, res) => {
+  try {
+    req.user.termsAccepted = true;
+    await req.user.save();
+    res.json({ ok: true, user: req.user.toSafe() });
+  } catch (err) {
+    res.status(500).json({ error: "accept_failed", message: err.message });
+  }
+});
+
 export default router;
