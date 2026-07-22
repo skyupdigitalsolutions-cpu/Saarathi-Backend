@@ -66,8 +66,12 @@ router.post("/webhook", async (req, res) => {
             (async () => {
               try {
                 const lead = await fetchLeadById(leadgenId);
+                // The webhook payload (`v`) never carries campaign/ad names —
+                // only the Graph API fetch (with `fields=` set) does.
+                const campaignName =
+                  lead.campaign_name || lead.ad_name || v.campaign_name || v.ad_name || "";
                 const body = mapMetaFields(lead.field_data, {
-                  campaign: v.campaign_name || v.ad_name || "",
+                  campaign: campaignName,
                 });
                 await createAndClassify(
                   { ...body, rawPayload: { ...v, graph: lead } },
