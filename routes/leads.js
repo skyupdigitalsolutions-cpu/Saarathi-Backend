@@ -83,6 +83,8 @@ router.get("/", async (req, res) => {
       source,
       search,
       followUpDue,
+      dateFrom,
+      dateTo,
       sortBy = "createdAt",
       order = "desc",
       page = 1,
@@ -96,6 +98,16 @@ router.get("/", async (req, res) => {
     if (source) q.source = source;
     if (assignedTo) q.assignedTo = assignedTo === "unassigned" ? "" : assignedTo;
     if (followUpDue === "true") q.followUpAt = { $lte: new Date() };
+    // Date range filter on createdAt
+    if (dateFrom || dateTo) {
+      q.createdAt = {};
+      if (dateFrom) q.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23, 59, 59, 999); // include full end day
+        q.createdAt.$lte = end;
+      }
+    }
     if (search) {
       const rx = new RegExp(String(search).trim(), "i");
       q.$or = [{ name: rx }, { phone: rx }, { email: rx }, { city: rx }];
