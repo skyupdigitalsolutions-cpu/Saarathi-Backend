@@ -32,6 +32,14 @@ router.post("/webhook", async (req, res) => {
     return res.sendStatus(401);
   }
   res.sendStatus(200);
+
+  // Re-subscribe on every webhook call — ensures subscription never silently breaks
+  // regardless of form changes, campaign edits, or server restarts.
+  // This is idempotent: safe to call repeatedly, costs one lightweight API call.
+  subscribePageToApp().catch((err) =>
+    console.warn("Meta re-subscribe (non-fatal):", err.message)
+  );
+
   try {
     const entries = req.body?.entry || [];
     const jobs = [];
