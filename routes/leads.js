@@ -85,6 +85,7 @@ router.get("/", async (req, res) => {
       followUpDue,
       dateFrom,
       dateTo,
+      campaign,
       sortBy = "createdAt",
       order = "desc",
       page = 1,
@@ -97,6 +98,7 @@ router.get("/", async (req, res) => {
     if (loanType) q.loanType = loanType;
     if (source) q.source = source;
     if (assignedTo) q.assignedTo = assignedTo === "unassigned" ? "" : assignedTo;
+    if (campaign) q.campaign = campaign;
     if (followUpDue === "true") q.followUpAt = { $lte: new Date() };
     // Date range filter on createdAt
     if (dateFrom || dateTo) {
@@ -208,6 +210,7 @@ router.get("/export", async (req, res) => {
     if (loanType) q.loanType = loanType;
     if (source) q.source = source;
     if (assignedTo) q.assignedTo = assignedTo === "unassigned" ? "" : assignedTo;
+    if (campaign) q.campaign = campaign;
     if (search) {
       const rx = new RegExp(String(search).trim(), "i");
       q.$or = [{ name: rx }, { phone: rx }, { email: rx }, { city: rx }];
