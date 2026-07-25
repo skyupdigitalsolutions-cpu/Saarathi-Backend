@@ -119,16 +119,28 @@ router.get("/", async (req, res) => {
 router.post("/import", async (req, res) => {
   try {
     const rows = Array.isArray(req.body.leads) ? req.body.leads : [];
-    if (!rows.length) return res.json({ inserted: 0, duplicates: 0, failed: 0, total: 0 });
+    if (!rows.length) return res.json({ inserted: 0, duplicates: 0, failed: 0, skipped: 0, total: 0 });
 
     let failed = 0;
+    let skipped = 0;
     const docs = [];
     for (const r of rows) {
       try {
-        const phoneRaw = r.phone || "";
+        // Skip completely empty rows (all values blank)
+        const allValues = Object.values(r).map((v) => String(v || "").trim());
+        if (allValues.every((v) => !v)) { skipped++; continue; }
+
+        // Phone is required — skip rows without a usable phone number
+        const phoneRaw = String(r.phone || "").trim();
+        if (!phoneRaw) { skipped++; continue; }
+
+        const normalizedPhone = normalizePhone(phoneRaw);
+        // After normalization the phone must have digits — reject garbage values
+        if (!normalizedPhone || !/\d{7,}/.test(normalizedPhone)) { skipped++; continue; }
+
         const lead = {
           name: (r.name || "").trim(),
-          phone: normalizePhone(phoneRaw),
+          phone: normalizedPhone,
           phoneRaw,
           email: (r.email || "").toLowerCase().trim(),
           city: (r.city || "").trim(),
@@ -168,7 +180,7 @@ router.post("/import", async (req, res) => {
         }
       }
     }
-    res.json({ inserted, duplicates, failed, total: rows.length });
+    res.json({ inserted, duplicates, failed, skipped, total: rows.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
