@@ -8,14 +8,12 @@
 export const WHATSAPP_TEMPLATES = [
   {
     // 1) FIRST OUTREACH — send this to a fresh lead. Introduces Saarathi and links the form.
-    //    NOTE: replace the link below with your deployed form URL in BOTH this preview
-    //    AND in the actual template body you submit in MSG91.
     name: "opening_blast",
     label: "Intro + form link (first message)",
     language: "en",
     params: ["name"],
     preview:
-      "Hi {{1}}, this is Saarathi Associates. We help you secure the right loan — personal, home, business, car, gold, and loan against property — with quick processing and expert guidance. To get started, please fill this short form and our team will reach out to you: https://sarathi-associates.netlify.app/",
+      "*Dear {{1}}*,\nLooking for a loan? We are here to help.\nWe offer *Personal Loan*, *Home Loan*, *Business Loan*, *Car Loan*, *Gold Loan* and *Loan Against Property* — with quick processing, minimal paperwork, and friendly guidance at every step.\nApply now in just 1 minute and our executive will reach out to you shortly.\n_T&Cs apply._\n👉 *Apply now:* https://sarathi-associates.netlify.app/",
   },
   {
     // 2) AUTO ACKNOWLEDGEMENT — sent automatically the moment someone submits the form.
