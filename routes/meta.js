@@ -55,6 +55,9 @@ router.post("/webhook", async (req, res) => {
                 const lead = await fetchLeadById(leadgenId);
                 const body = mapMetaFields(lead.field_data, {
                   campaign: v.campaign_name || v.ad_name || "",
+                  adName: v.ad_name || "",
+                  adsetName: v.adset_name || "",
+                  formName: lead.name || v.form_id ? `Form ${v.form_id}` : "",
                 });
                 await createAndClassify(
                   { ...body, rawPayload: { ...v, graph: lead } },
@@ -67,7 +70,12 @@ router.post("/webhook", async (req, res) => {
             })()
           );
         } else if (v.field_data) {
-          const body = mapMetaFields(v.field_data, { campaign: v.campaign_name || "" });
+          const body = mapMetaFields(v.field_data, {
+            campaign: v.campaign_name || v.ad_name || "",
+            adName: v.ad_name || "",
+            adsetName: v.adset_name || "",
+            formName: v.form_name || (v.form_id ? `Form ${v.form_id}` : ""),
+          });
           jobs.push(createAndClassify({ ...body, rawPayload: v }, "meta"));
         } else if (leadgenId) {
           console.warn(`Meta lead ${leadgenId} received but META_PAGE_ACCESS_TOKEN is not set.`);
