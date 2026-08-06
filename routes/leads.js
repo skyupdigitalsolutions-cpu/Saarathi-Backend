@@ -41,6 +41,10 @@ function buildLeadFields(body, source = "manual") {
     existingLoan: typeof body.existingLoan === "boolean" ? body.existingLoan : null,
     source,
     campaign: body.campaign || "",
+    // Meta ad attribution
+    adName: body.adName || "",
+    adsetName: body.adsetName || "",
+    formName: body.formName || "",
     // Raw Meta form answers stored verbatim — populated for source=meta leads.
     metaFormAnswers: Array.isArray(body.metaFormAnswers) ? body.metaFormAnswers : [],
   };
@@ -50,9 +54,15 @@ function buildLeadFields(body, source = "manual") {
 export async function createAndClassify(body, source) {
   const fields = buildLeadFields(body, source);
 
-  // duplicate guard on normalized phone
+  // duplicate guard: normalized phone (primary) or name+phoneRaw combo (fallback)
   if (fields.phone) {
     const existing = await Lead.findOne({ phone: fields.phone });
+    if (existing) {
+      return { duplicate: true, lead: existing };
+    }
+  } else if (fields.name && fields.phoneRaw) {
+    // fallback dedup: same raw phone + name (catches un-normalizable numbers)
+    const existing = await Lead.findOne({ phoneRaw: fields.phoneRaw, name: fields.name });
     if (existing) {
       return { duplicate: true, lead: existing };
     }
@@ -348,6 +358,29 @@ router.post("/:id/reclassify", async (req, res) => {
     Object.assign(lead, ai);
     await lead.save();
     res.json(lead);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/leads/deduplicate — one-time cleanup: removes duplicate phone records keeping the oldest
+router.post("/deduplicate", async (req, res) => {
+  try {
+    // Find phones that appear more than once
+    const dupes = await Lead.aggregate([
+      { $match: { phone: { $ne: "" } } },
+      { $group: { _id: "$phone", count: { $sum: 1 }, ids: { $push: "$_id" }, firstId: { $min: "$_id" } } },
+      { $match: { count: { $gt: 1 } } },
+    ]);
+
+    let removed = 0;
+    for (const d of dupes) {
+      // Keep the oldest (smallest ObjectId = earliest created), delete the rest
+      const toDelete = d.ids.filter((id) => String(id) !== String(d.firstId));
+      const result = await Lead.deleteMany({ _id: { $in: toDelete } });
+      removed += result.deletedCount;
+    }
+    res.json({ ok: true, duplicateGroups: dupes.length, removed });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
