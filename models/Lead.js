@@ -48,6 +48,11 @@ const LeadSchema = new mongoose.Schema(
     },
     campaign: { type: String, default: "" },
 
+    // --- Meta ad attribution ---
+    adName: { type: String, default: "" },     // ad_name from Meta webhook
+    adsetName: { type: String, default: "" },  // adset_name from Meta webhook
+    formName: { type: String, default: "" },   // form_name / form_id label from Graph API
+
     // --- AI classification ---
     tier: {
       type: String,
